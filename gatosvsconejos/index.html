@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clasificador de imágenes</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+</head>
+<body>
+  <h1>Clasificador de gatos y conejos</h1>
+  <video id="webcam" autoplay playsinline width="224" height="224"></video>
+  <button id="predict">Clasificar</button>
+  <p id="resultado">Resultado: </p>
+
+  <script>
+    let modelo;
+
+    // Cargar modelo
+    (async () => {
+      try {
+        console.log("Cargando modelo...");
+        modelo = await tf.loadLayersModel('model.json');
+        console.log("Modelo cargado exitosamente");
+        modelo.summary();
+      } catch (error) {
+        console.error("Error al cargar el modelo:", error);
+      }
+    })();
+
+    // Configurar la cámara
+    const webcamElement = document.getElementById('webcam');
+    const startWebcam = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        webcamElement.srcObject = stream;
+        console.log("Cámara iniciada");
+      } catch (error) {
+        console.error("No se pudo iniciar la cámara:", error);
+      }
+    };
+
+    startWebcam();
+
+    // Clasificar imagen desde la cámara
+    document.getElementById('predict').addEventListener('click', async () => {
+      if (!modelo) {
+        alert("El modelo no está cargado aún. Por favor, espera.");
+        return;
+      }
+
+      const tensor = tf.browser.fromPixels(webcamElement)
+        .resizeNearestNeighbor([100, 100]) // Cambiar el tamaño a 100x100
+        .toFloat()
+        .div(tf.scalar(255)) // Normalizar los píxeles
+        .expandDims(0); // Agregar dimensión batch
+
+      const prediccion = modelo.predict(tensor);
+      const resultado = (await prediccion.data())[0];
+      console.log("Predicción:", resultado);
+
+      document.getElementById('resultado').innerText =
+        resultado > 0.5 ? "Conejo" : "Gato";
+    });
+  </script>
+</body>
+</html>
